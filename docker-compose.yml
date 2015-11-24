@@ -1,0 +1,85 @@
+# =============
+# Load Balancer
+# =============
+lb:
+  image: 1science/nginx:1.9.0
+  links:
+    - consul
+  ports:
+    - "80:80"
+  volumes:
+    - "./dockerize/lb/nginx/nginx.conf:/etc/nginx/nginx.conf"
+    - "./dockerize/lb/templates:/etc/consul-templates"
+
+# =================
+# Service Discovery
+# =================
+consul:
+  image: progrium/consul:latest
+  command: -server -bootstrap -advertise 172.17.42.1
+  ports:
+    - "8400:8400"
+    - "8500:8500"
+    - "8600:53/udp"
+
+registrator:
+  image: gliderlabs/registrator:latest
+  command:  -ip=192.168.99.100 consul://consul:8500
+  volumes:
+    - "/var/run/docker.sock:/tmp/docker.sock"
+  links:
+    - consul
+
+# ===================
+# Data-only container
+# ===================
+rubygems:
+  image: busybox
+  # command: tail -f /dev/null
+  volumes:
+    - /rubygems
+
+dbdata:
+  image: busybox
+  # command: tail -f /dev/null
+  volumes:
+    - /var/lib/postgresql
+
+# ==============
+# Infrastructure
+# ==============
+db:
+  image: postgres:9.4
+  environment:
+    # POSTGRES_USER: xlym
+    POSTGRES_PASSWORD: nopassword
+  volumes_from:
+    - dbdata
+  ports:
+    - "5432:5432"
+
+redis:
+  image: redis:3.0
+  ports:
+    - "6379:6379"
+
+# ===========
+# Application
+# ===========
+xlym:
+  build: ./xlym/
+  command: bundle exec puma -p 3000 -C config/puma.rb
+  environment:
+    SERVICE_NAME: myapp
+    SERVICE_TAGS: production
+  ports:
+    - "3000"
+  volumes:
+    - "./xlym:/myapp"
+  volumes_from:
+    - rubygems
+  links:
+    - db
+    - redis
+    - consul
+

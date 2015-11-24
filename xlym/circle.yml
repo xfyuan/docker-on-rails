@@ -1,0 +1,10 @@
+checkout:
+  post:
+    - cp .sample.env .env
+database:
+  override:
+    - mv config/database.ci.yml config/database.yml
+    - bin/setup
+test:
+  override:
+    - bundle exec rake

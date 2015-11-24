@@ -1,0 +1,6 @@
+.git
+.idea
+tmp/*
+log/*
+db/*.sqlite3
+vendor/bundle
